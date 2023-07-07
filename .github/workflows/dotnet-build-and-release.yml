@@ -28,9 +28,11 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Setup dotnet
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '3.1.x'
+          dotnet-version: |
+            3.1.x
+            6.0.x
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v1
@@ -46,12 +48,14 @@ jobs:
             echo "Solution File Path: ${slnPath}"
             echo "SOLUTION_PATH=${slnPath}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
+            echo "release_dir: ${{ inputs.release_dir }}"
+
             $creatingRelease = ("${{ inputs.release_url }}".Trim().Length -gt 0) -and ("${{ inputs.release_dir }}".Trim().Length -gt 0)
             echo "Flagged to create release: ${creatingRelease}"
             echo "CREATE_RELEASE=${creatingRelease}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
             dotnet nuget add source https://nuget.pkg.github.com/Keyfactor/index.json -n github -u ${{ github.actor }} -p ${{ secrets.token }} --store-password-in-clear-text
-            nuget restore $slnPath
+            nuget restore $slnPath -Project2ProjectTimeout 240
 
       - name: Increment Assembly Version
         if: env.CREATE_RELEASE == 'True'
@@ -86,7 +90,7 @@ jobs:
       - name: Upload Release Asset (x64)
         if: success() && env.CREATE_RELEASE == 'True'
         id: upload-release-asset-x64
-        uses: actions/upload-release-asset@v1
+        uses: keyfactor/upload-release-asset@v1.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
